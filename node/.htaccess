@@ -1,0 +1,4 @@
+AddDefaultCharset utf-8
+RewriteEngine On
+RewriteBase /node/
+RewriteRule (.*) http://localhost:3000/$1 [P]
