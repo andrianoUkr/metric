@@ -1,9 +1,5 @@
 webden.ListData = (function(W, $){	
-	var listDataCollections = '';
-	var listDataViews = '';
-	var rowModel = '';	
-	var menuViews = '';
-	var rowViews = '';	
+	var COUNT = '0|20';
 	var metricData = {};
 		metricData.columnList = ['firstName','lastName', 'dateBirth','mail','balance','client_pb'];
 		metricData.columnListHide = [];
@@ -11,7 +7,7 @@ webden.ListData = (function(W, $){
 			q:  	metricData.columnList.join('|'),
 			sortname: 'firstName',
 			sortorder: 'desc',
-			count:     '0|20'
+			count:     COUNT
 		};
 	
 	function getCurrentData (){
@@ -29,7 +25,7 @@ webden.ListData = (function(W, $){
 
 	function getModel(obj){
 		var obj = obj || '';
-		return Backbone.ajax({
+		return $.ajax({
 			url:'node/data',  // api REST-Server (NODEJS and MONGODB) 
 			// url:'api/main/index/data',  // api REST-Server (PHP and MYSQL)
 			data:obj,
@@ -48,66 +44,51 @@ webden.ListData = (function(W, $){
 
 /* View for model */
 
-	var ListMenuViews =  Backbone.View.extend({
-		tagName: 'div',
-		template: '#menu_wrapper',
-		initialize: function() {
-			this.render();
-			this.model.on('change', this.myReset, this );
-			setSortable();				
+	var ListMenuViews = {	
+		model: {},
+		init: function(model) {
+			this.model = model;
+			this.render();			
 		},					
-		myReset: function(){
-			this.$el.html('');
-			this.render();
-		},		
-		
 		visible: function(e) {
 			e.preventDefault();
-			console.log('fff');
+			console.log("TEST");
 		},
-		events: {
-			"click #visible"	:	"visible",
+		events: function(templ) {
+			$(templ).find('#visible').click(this.visible.bind(this));
+			return templ;
 		},
 		render: function (){
-			var data = this.model.toJSON();
-			var compiled =_.template($(this.template).html(), data);
-			this.$el.html(compiled);
-			$('#menu').html(this.$el);
+			var element =  $('<div/>');
+			var template = 'menu_wrapper';
 			
-			return this;
-		}		
-	});	
+			if(Object.keys(this.model).length > 0){
+				var htmlTemplate = webden.templates.showMenu(template, this.model);
+				element.html(htmlTemplate);
+				this.events(element);
+				$('#menu').html(element);					
+			}			
+		}
+	};
 	
-	var ListRowViews =  Backbone.View.extend({
-		tagName: 'ul',
-		id: 'title',
-		template: '#rowTitle',
-		initialize: function() {
-			this.render();
+	var ListRowViews = {
+		model: {},		
+		init: function(model) {
+			this.model = model;
+			this.render();			
 		},
-		render: function (){
-			var data = this.model.toJSON();
-			var obj = _.clone(data);
-			obj.columnList = _.clone(data.columnList);
-			obj.columnList.unshift('id');
-			var rowTitle =_.template($(this.template).html(), obj);
-			metricData.dynamicTemplate = _.template($('#ulTemplate').html(), obj);
-			// obj.columnList.shift();
-			this.$el.html(rowTitle);
-			$('#main_block').html(this.$el);
-			return this;
-		},
-		events: {
-			'click .up': 'upEvent',
-			'click .down': 'downEvent',
-		},	
 		clickData: function (val){
 			$('#title li span').removeClass('active');
 			$(val.target).addClass('active');			
 			return $(val.target).parent().attr('id');
 		},
+		events: function(templ) {		
+			$(templ).find('.up').click(this.upEvent.bind(this));
+			$(templ).find('.down').click(this.downEvent.bind(this));
+			return templ;
+		},
 		updateByEvenrt: function (sortname, sortorder){
-			metricData.currData.count = '0|20';
+			metricData.currData.count = COUNT;
 			metricData.currData.sortname = sortname || '';
 			metricData.currData.sortorder = sortorder || '';
 			setCurrentData();			
@@ -115,100 +96,132 @@ webden.ListData = (function(W, $){
 		upEvent: function (e){
 			e.preventDefault();
 			this.updateByEvenrt(this.clickData(e), 'desc');
-			// displayTables();	
 			updateTables();						
 		},
 		downEvent: function (e){
 			e.preventDefault();
 			this.updateByEvenrt(this.clickData(e), 'asc');
-			// displayTables();
 			updateTables();
-		}
-	});		
-
-	var ViewOne = Backbone.View.extend({
-		tagName: 'ul',
-		className: 'row',
-		template: '#listMenu',		
+		},
 		render: function (){
-			var data = this.model.toJSON();
-			
-			if(data.balance.toString().trim() != '') {
-				var balance = Math.round(data.balance * 100) / 100;
-				if(balance > 0) {
-					data.balance = '<span class="positive">'+ balance +'</span>';
-				} else if(balance < 0){
-					data.balance = '<span class="negative">'+ balance +'</span>';
-				}
-				if(data.mail.trim() != '') {
-					data.mail = '<a href="mailto:' + data.mail + '">'+data.mail+'</a>';
-				}
-					
-				if(data.client_pb > 0) {
-					data.client_pb = 'YES';
-				} else {
-					data.client_pb = 'NO';	
-				}
+			var element = $('<ul/>', {
+					id: 'title'
+				});
+			var template = 'rowTitle';
+				
+			if(Object.keys(this.model).length > 0){
+				var objModel = $.extend({}, this.model);	
+				objModel.columnList = this.model.columnList.concat();
+				objModel.columnList.unshift('id');
+				
+				var htmlTemplate = webden.templates.showRow(template, objModel);	
+				metricData.dynamicTemplate = webden.templates.dynTpl('ulTemplate', objModel);
+				
+				element.html(htmlTemplate);
+				var templ = this.events(element);
+				$('#main_block').html(templ);		
 			}
-			var compiled = _.template(metricData.dynamicTemplate, data);
-			this.$el.html(compiled);				
-			return this;
 		}		
-	});	
+	};
+	var ViewOne = {	
+		model: {},		
+		init: function(model) {
+			this.model = model;
+			return this.render();			
+		},
+		render: function (){
+			var element = $('<ul/>',{
+					class: 'row'
+				});	
 
-/* View for collections */	
-
-	var ViewsCollection = Backbone.View.extend({
-		tagName: 'ul',
-		initialize: function() {			
-			this.render();
-			this.collection.on('add', this.addOne, this );	
-			this.collection.on('reset', this.myReset, this );
-		},					
-		addOne: function(task) {
-			var view = new ViewOne({model: task});
-			$('#main_block').append(view.render().el);
+			if(Object.keys(this.model).length > 0){
+				var data = this.model;
+				if(data.balance.toString().trim() != '') {
+					var balance = Math.round(data.balance * 100) / 100;
+					if(balance > 0) {
+						data.balance = '<span class="positive">'+ balance +'</span>';
+					} else if(balance < 0){
+						data.balance = '<span class="negative">'+ balance +'</span>';
+					}
+					if(data.mail.trim() != '') {
+						data.mail = '<a href="mailto:' + data.mail + '">'+data.mail+'</a>';
+					}
+						
+					if(data.client_pb > 0) {
+						data.client_pb = 'YES';
+					} else {
+						data.client_pb = 'NO';	
+					}
+				}				
+				
+				var htmlTemplate = webden.templates.showDynTpl(metricData.dynamicTemplate, data);
+				element.html(htmlTemplate);
+				var view = $('<div/>').html(element);
+				return view;				
+			}			
+		}		
+	};
+	
+	var ViewsCollection = {
+		collection: {},	
+		init: function(collection) {
+			this.collection = collection;
+			this.render();			
 		},	
-		myReset: function(){
+		reset: function(collection){
+			this.collection = collection || {};
 			$('#main_block .row').remove();
 			this.render();
 		},			
 		render: function (){	
-			this.collection.each( function(value){
-				var view = new ViewOne({model: value});
-				$('#main_block').append(view.render().el);
-			}, this)
-			
-			return this;
+			var obj = this.collection;
+			if(Object.keys(obj).length > 0){
+				for (var item = 0; item < obj.length; item++) {
+					var view = ViewOne.init(obj[item]);
+					$('#main_block').append(view.html());
+				}					
+			}		
 		}
-	});
-	
+	};
+		
 	function displayTables(){
 		getModel(getCurrentData().currData).done(function(data){
 			if(data.success == 1){
-				var objData = metricData;
-				rowModel = new Backbone.Model(objData);
-				menuViews = new ListMenuViews({model: rowModel});
-				rowViews = new ListRowViews({model: rowModel});
-				listDataCollections = new Backbone.Collection(data.result);	
-				listDataViews = new ViewsCollection({collection: listDataCollections});
+				ListMenuViews.init(metricData);
+				ListRowViews.init(metricData);				
+				ViewsCollection.init(data.result);
+				setSortable();
 			} else {
-				webden.Vent.trigger('vent:error', data.result);
+				webden.displayMsg(data.result);
 			}
 		}).fail(function(data){
-			webden.Vent.trigger('vent:error', 'Error in response');
+			webden.displayMsg('Error in response');
 		});	
 	};
 	
+	function updateTitles(){
+		metricData.currData.count = COUNT;
+		getModel(metricData.currData).done(function(data){
+			if(data.success == 1){
+				ListRowViews.init(metricData);				
+				ViewsCollection.init(data.result);
+			} else {
+				webden.displayMsg(data.result);
+			}
+		}).fail(function(data){
+			webden.displayMsg('Error in response');
+		});	
+	}
+
 	function updateTables(){
 		getModel(metricData.currData).done(function(data){
 			if(data.success == 1){
-				listDataCollections.reset(data.result);
+				ViewsCollection.reset(data.result);
 			} else {
-				webden.Vent.trigger('vent:error', data.result);
+				webden.displayMsg(data.result);
 			}
 		}).fail(function(data){
-			webden.Vent.trigger('vent:error', 'Error in response');
+			webden.displayMsg('Error in response');
 		});
 	}
 	
@@ -217,20 +230,20 @@ webden.ListData = (function(W, $){
 		$(window).scroll(function(){
 			if($(window).height() + $(window).scrollTop() + 100 >= $(document).height() && !block){
 				var count = metricData.currData.count.split('|');
-				var start = parseInt(count[1]) + 1;
-				var end = parseInt(count[1]) + 10;
+				var start = parseInt(count[0]) + parseInt(count[1]);
+				var end = 10;
 				metricData.currData.count = start + '|' + end;
 				block = true;
 				getModel(metricData.currData).done(function(data){
 					if(data.success == 1){
-						listDataCollections.add(data.result)
+						ViewsCollection.init(data.result)
 						block = false;
 					} else {
-						webden.Vent.trigger('vent:error', data.result);
+						webden.displayMsg(data.result);
 						block = false;
 					}
 				}).fail(function(data){
-					webden.Vent.trigger('vent:error', 'Error in response');
+					webden.displayMsg('Error in response');
 				});				
 			
 			
@@ -248,12 +261,8 @@ webden.ListData = (function(W, $){
 			containment:'#left-sidebar',
 			receive:	function(event, ui) {
 							var $this = $(this);
-							console.log('receive');
-							
-							
 						},
 			create:		function(event, ui){
-							console.log('create');
 							var $this = $(this);
 							$this.children().each(function(){
 									var _this=this;
@@ -262,22 +271,17 @@ webden.ListData = (function(W, $){
 							) 
 						},
 			remove:		function(event, ui){
-							console.log('remove');
 							var $this = $(this);
 						},
 			stop:		function (event, ui) {
-							console.log('stop');
 							var visibleData=$('#visible.js-sortable').sortable('toArray', {attribute : 'data-val'});
 							var hiddenData=$('#hidden.js-sortable').sortable('toArray', {attribute : 'data-val'});
 							
 							metricData.columnList = visibleData;
 							metricData.columnListHide = hiddenData;	
-							setCurrentData();	
-							displayTables();
-											
+							updateTitles();			
 						},
 			sort:		function (event, ui) {
-							console.log('sort');
 							
 						}			
 

@@ -1,24 +1,12 @@
 webden = (function(W, $){		
-	var Router = {};
 	
-	/* CUSTOM EVENT*/
-	var Vent = {};
-	_.extend(Vent, Backbone.Events);
-	
-	
-	Vent.on('vent:error', function(msg, callback) {
+	/* Show a message in the browser */
+	function displayMsg(msg, callback) {
 		alert(msg);
 		if(callback){
 			callback(msg);
 		}
-	});	
-	
-	Vent.on('vent:done', function(msg, callback) {
-		alert(msg);
-		if(callback){
-			callback(msg);
-		}
-	});
+	}	
 	
 	/*  LOADING*/
 	function loadStart(){
@@ -29,10 +17,8 @@ webden = (function(W, $){
 		$('#loader_wrapper').hide();		
 	};
 	
-	
 	return{		
-		Router:Router,
-		Vent  : Vent,
+		displayMsg  : displayMsg,
 		loadStart: loadStart,
 		loadStop: loadStop
 	};
